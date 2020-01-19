@@ -1,0 +1,8 @@
+cmake_minimum_required(VERSION 2.8)
+STRING( REGEX REPLACE ".*/(.*)" "\\1" CURRENT_FOLDER ${CMAKE_CURRENT_SOURCE_DIR} )
+project(${CURRENT_FOLDER})
+
+set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIRE}/install)
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules)
+
+add_subdirectory(src)
