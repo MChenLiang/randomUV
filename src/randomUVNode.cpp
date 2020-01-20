@@ -15,6 +15,7 @@
 
 MObject randomUVNode::inMesh;
 MObject randomUVNode::time;
+MObject randomUVNode::stTime;
 MObject randomUVNode::frequency;
 MObject randomUVNode::outMesh;
 
@@ -33,12 +34,21 @@ MStatus randomUVNode::initialize()
 
 	{
 		MFnNumericAttribute nAttr;
-		time = nAttr.create("time", "tm", MFnNumericData::kInt, 0, &status);
+		time = nAttr.create("time", "t", MFnNumericData::kInt, 0, &status);
 		status = nAttr.setWritable(true);
 		status = nAttr.setStorable(true);
 		status = nAttr.setKeyable(true);
 
 	}
+
+    {
+        MFnNumericAttribute nAttr;
+        stTime = nAttr.create("startTime", "stT", MFnNumericData::kInt, 0, &status);
+        status = nAttr.setWritable(true);
+        status = nAttr.setStorable(true);
+        status = nAttr.setKeyable(true);
+
+    }
 
 	{
 		MFnNumericAttribute nAttr;
@@ -61,12 +71,14 @@ MStatus randomUVNode::initialize()
 	}
 
 	addAttribute(inMesh);
-	addAttribute(time);
+    addAttribute(time);
+    addAttribute(stTime);
 	addAttribute(frequency);
 	addAttribute(outMesh);
 
 	attributeAffects(inMesh, outMesh);
-	attributeAffects(time, outMesh);
+    attributeAffects(time, outMesh);
+    attributeAffects(stTime, outMesh);
 	attributeAffects(frequency, outMesh);
 
 	return status;
@@ -102,20 +114,39 @@ MStatus randomUVNode::getOutMesh(const MPlug & plug, MDataBlock & data)
 	MFnMesh inMeshFn(inMeshObj);
 
 	MDataHandle timeHandle = data.inputValue(time, &returnStatus);
+    MDataHandle stTimeHandle = data.inputValue(stTime, &returnStatus);
 	MDataHandle freqHandle = data.inputValue(frequency, &returnStatus);
 
-	unsigned int getT = timeHandle.asInt();
-	unsigned int freqT = freqHandle.asInt();
+	int getT = timeHandle.asInt();
+    int getST = stTimeHandle.asInt();
+	int freqT = freqHandle.asInt();
 
 	unsigned int length = inMeshFn.numPolygons();
 
 	MDataHandle outMeshHandle = data.outputValue(outMesh, &returnStatus);
 	MObject outMeshObj = outMeshHandle.asMesh();
-	if (!outMeshObj.isNull() && std::fmod(getT, freqT) != 0.0) {
-		outMeshHandle.setClean();
-		return returnStatus;
-	}
-	MFnMesh createFn;
+    
+    MFnMesh createFn;
+    // 初始形态
+    if (getT <= getST) {
+        changeTime(getST);
+        createFn.copy(inMeshObj, outMeshData);
+        outMeshHandle.set(outMeshData);
+        outMeshHandle.setClean();
+        return returnStatus;
+    }
+    // 不需要变化的情况就跳过
+    if (getT < freqT + changeTime()) {
+        outMeshHandle.setClean();
+    	return returnStatus;
+    }
+
+	//if (std::fmod(getT, freqT) != 0.0) {
+	//	outMeshHandle.setClean();
+	//	return returnStatus;
+	//}
+	// 需要结算的情况
+    changeTime(getT);
 	createFn.copy(inMeshObj, outMeshData);
 	MFnMesh outMeshFn(outMeshData);
 
@@ -131,9 +162,7 @@ MStatus randomUVNode::getOutMesh(const MPlug & plug, MDataBlock & data)
 	j = 0;
 	for (std::vector<int>::iterator it = faceIds.begin(); it != faceIds.end(); ++it) {
 		unsigned int faceId = *it;
-		//MGlobal::displayInfo(MString("face id") + " -- " + faceId);
 		MPoint mp = vertexArray[faceId * 4 + 0];
-		//MGlobal::displayInfo(MString("temp point") + " -- " + mp.x + mp.y + mp.z);
 		outVtxArray[j * 4 + 0] = vertexArray[faceId * 4 + 0];
 		outVtxArray[j * 4 + 1] = vertexArray[faceId * 4 + 1];
 		outVtxArray[j * 4 + 2] = vertexArray[faceId * 4 + 2];
@@ -148,4 +177,14 @@ MStatus randomUVNode::getOutMesh(const MPlug & plug, MDataBlock & data)
 	outMeshHandle.setClean();
 	
 	return returnStatus;
+}
+
+int randomUVNode::changeTime()
+{
+    return randomUVNode::getChangeTime;
+}
+
+void randomUVNode::changeTime(const int time)
+{
+    randomUVNode::getChangeTime = time;
 }
