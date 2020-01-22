@@ -22,6 +22,7 @@ public:
 
 private:
 	MStatus getOutMesh(const MPlug& plug, MDataBlock& data);
+
     int getChangeTime = 0;
     int changeTime();
     void changeTime(const int time);

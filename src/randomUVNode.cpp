@@ -8,6 +8,7 @@
 #include <maya/MPointArray.h>
 #include <maya/MTime.h>
 #include <maya/MGlobal.h>
+#include <maya/MFloatArray.h>
 
 #include <math.h>		// std::fmod
 #include <algorithm>    // std::random_shuffle
@@ -22,6 +23,8 @@ MObject randomUVNode::outMesh;
 const		MTypeId     randomUVNode::id(0x0012f5d0);
 
 int myrandom(int i) { return std::rand() % i; }
+
+
 
 MStatus randomUVNode::initialize()
 {
@@ -128,7 +131,7 @@ MStatus randomUVNode::getOutMesh(const MPlug & plug, MDataBlock & data)
     
     MFnMesh createFn;
     // 初始形态
-    if (getT <= getST) {
+    if (getT <= getST || getST == 0) {
         changeTime(getST);
         createFn.copy(inMeshObj, outMeshData);
         outMeshHandle.set(outMeshData);
@@ -141,43 +144,41 @@ MStatus randomUVNode::getOutMesh(const MPlug & plug, MDataBlock & data)
     	return returnStatus;
     }
 
-	//if (std::fmod(getT, freqT) != 0.0) {
-	//	outMeshHandle.setClean();
-	//	return returnStatus;
-	//}
 	// 需要结算的情况
     changeTime(getT);
-	createFn.copy(inMeshObj, outMeshData);
-	MFnMesh outMeshFn(outMeshData);
 
-	unsigned i, j;
-	std::vector<int> faceIds;
-	for (i = 0; i < length; ++i) faceIds.push_back(i);
-	std::random_shuffle(faceIds.begin(), faceIds.end(), myrandom);
+    createFn.copy(inMeshObj, outMeshData);
+    MFnMesh outMeshFn(outMeshData);
 
-	MPointArray vertexArray, outVtxArray;
-	inMeshFn.getPoints(vertexArray, MSpace::kWorld);
+    unsigned i, j;
+    std::vector<int> faceIds;
+    for (i = 0; i < length; ++i) faceIds.push_back(i);
+    std::random_shuffle(faceIds.begin(), faceIds.end(), myrandom);
 
-	outVtxArray.setLength(vertexArray.length());
-	j = 0;
-	for (std::vector<int>::iterator it = faceIds.begin(); it != faceIds.end(); ++it) {
-		unsigned int faceId = *it;
-		MPoint mp = vertexArray[faceId * 4 + 0];
-		outVtxArray[j * 4 + 0] = vertexArray[faceId * 4 + 0];
-		outVtxArray[j * 4 + 1] = vertexArray[faceId * 4 + 1];
-		outVtxArray[j * 4 + 2] = vertexArray[faceId * 4 + 2];
-		outVtxArray[j * 4 + 3] = vertexArray[faceId * 4 + 3];
-		j++;
+    MPointArray vertexArray, outVtxArray;
+    inMeshFn.getPoints(vertexArray, MSpace::kWorld);
 
-	}
-	outMeshFn.setPoints(outVtxArray, MSpace::kWorld);
+    outVtxArray.setLength(vertexArray.length());
+    j = 0;
+    for (std::vector<int>::iterator it = faceIds.begin(); it != faceIds.end(); ++it) {
+        unsigned int faceId = *it;
+        MPoint mp = vertexArray[faceId * 4 + 0];
+        outVtxArray[j * 4 + 0] = vertexArray[faceId * 4 + 0];
+        outVtxArray[j * 4 + 1] = vertexArray[faceId * 4 + 1];
+        outVtxArray[j * 4 + 2] = vertexArray[faceId * 4 + 2];
+        outVtxArray[j * 4 + 3] = vertexArray[faceId * 4 + 3];
+        j++;
 
-	outMeshFn.updateSurface();
-	outMeshHandle.set(outMeshData);
-	outMeshHandle.setClean();
-	
-	return returnStatus;
+    }
+    outMeshFn.setPoints(outVtxArray, MSpace::kWorld);
+
+    outMeshFn.updateSurface();
+    outMeshHandle.set(outMeshData);
+    outMeshHandle.setClean();
+
+    return returnStatus;
 }
+
 
 int randomUVNode::changeTime()
 {
